@@ -36,3 +36,10 @@ Under structural load testing simulating heavy concurrent usage, the architectur
    ```bash
    git clone <repository-url>
    cd cryptopulse
+###Initialize, build, and scale the microservices cluster using Docker Compose:
+docker compose up --build --scale api=3
+
+###Launch the local web dashboard:
+cd frontend
+npm install
+npm run dev
