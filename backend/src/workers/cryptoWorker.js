@@ -1,12 +1,12 @@
 import axios from "axios";
 import PriceHistory from "../models/PriceHistory.js";
+import { redisClient } from "../services/redisService.js";
 
 export const startCryptoWorker = () => {
   setInterval(async () => {
     try {
       console.log(" Fetching live data from Public CoinGecko API...");
 
-      // Using CoinGecko Free Public API as alternative
       const response = await axios.get(
         "https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=50&page=1",
       );
@@ -23,16 +23,17 @@ export const startCryptoWorker = () => {
       }));
 
       if (bulkData.length > 0) {
+        // 1. Save to MongoDB for Historical Analytics
         await PriceHistory.insertMany(bulkData, { ordered: false });
-        console.log(
-          ` Successfully saved ${bulkData.length} coin metrics to MongoDB.`,
-        );
+        console.log(` Saved ${bulkData.length} metrics to MongoDB.`);
+
+        // 2. Cache the Latest Prices in Redis for Fast Response
+        // Pure array ko single key 'crypto:latest' mein store kar rahe hain with 60s expiration
+        await redisClient.setEx("crypto:latest", 60, JSON.stringify(bulkData));
+        console.log(" Latest prices cached in Redis!");
       }
     } catch (error) {
-      console.error(" Worker Error fetching crypto data:", error.message);
-      console.log(
-        " Tip: Make sure your internet is working and you can access api.coingecko.com",
-      );
+      console.error(" Worker Error:", error.message);
     }
-  }, 30000); // 30 seconds
+  }, 30000);
 };
